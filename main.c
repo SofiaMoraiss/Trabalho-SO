@@ -4,6 +4,13 @@
 #include <math.h>
 #include <ctype.h>
 #include "processo.h"
+#include "fila.h"
+
+int compare(const void* a, const void* b){
+    Processo *p1 = (Processo *)a;
+    Processo *p2 = (Processo *)b;
+    return get_t_chegada(p1) - get_t_chegada(p2); // Example comparison based on priority 
+}
 
 typedef enum {
     FCFS = 1,
@@ -12,55 +19,76 @@ typedef enum {
 } Escalonamento;
 
 int main() {
-    // Print a welcome message
 
     FILE *file;
     int num, esc;
 
-    file = fopen("entradas/3.txt", "r");
+    file = fopen("entradas/1.txt", "r");
     if (file == NULL) {
-        fprintf(stderr, "Error opening file.\n");
+        fprintf(stderr, "Não foi possível abrir o arquivo.\n");
         return 1;
     }
 
     fscanf(file, "%d%*c", &num);
     
+    Processo *processos[num];
+
     for (int i = 0; i < num; i++) {
         int PID=i+1, dur, prioridade, qtd_threads, t_chegada;
         fscanf(file, "%d%*c%d%*c%d%*c%d", &dur, &prioridade, &qtd_threads, &t_chegada);
         
         Processo *p = initProcesso(PID, dur, prioridade, qtd_threads, t_chegada);
         if (p == NULL) {
-            fprintf(stderr, "Failed to initialize process.\n");
             fclose(file);
             return 1;
         }
+        processos[i] = p;
 
-        // Example usage of getters
-        printf("Process ID: %d\n", get_PID(p));
-        printf("Duration: %d\n", get_dur(p));
-        printf("Priority: %d\n", get_prioridade(p));
-        printf("Number of Threads: %d\n", get_qtd_threads(p));
-        printf("Arrival Time: %d\n", get_t_chegada(p));
-
-        // Free the allocated memory for the process
-        free(p);
+        // // Example usage of getters
+        // printf("Process ID: %d\n", get_PID(p));
+        // printf("Duration: %d\n", get_dur(p));
+        // printf("Priority: %d\n", get_prioridade(p));
+        // printf("Number of Threads: %d\n", get_qtd_threads(p));
+        // printf("Arrival Time: %d\n", get_t_chegada(p));
     }
+    qsort(processos, num, sizeof(Processo *), compare);
+
     fscanf(file, "%d", &esc);
     
+    Escalonamento tipo_escalonamento = (Escalonamento)esc;
+
     if (esc < 1 || esc > 3) {
         fprintf(stderr, "Método Inválido.\n");
         fclose(file);
         return 1;
     }
 
-    Escalonamento tipo_escalonamento = (Escalonamento)esc;
-
     switch (tipo_escalonamento) {
         case FCFS:
-            printf("Selected scheduling: First-Come, First-Served (FCFS)\n");
+            //monothreaded
+            for (int y =0; y<num; y++) {
+                Processo * p = processos[y];
+                printf("[FCFS] Executando processo PID %d\n", get_PID(p));
+                printf("[FCFS] Processo PID %d finalizado\n", get_PID(p));
+                free(p);
+            }
             break;
+            
         case RR:
+            //monothreaded
+            int tempo_passado=0;
+            for (int y =0; y<num; y++) {
+                Processo * p = processos[y];
+                printf("[RR] Executando processo PID %d com quantum 500ms\n", get_PID(p));
+                tempo_passado+=500;
+                if (tempo_passado >= get_dur(p)) {
+                    printf("[RR] Processo PID %d finalizado\n", get_PID(p));
+                    free(p);    
+                } else {
+                    set_dur(p, get_dur(p) - 500);
+                }
+            }
+            break;
             printf("Selected scheduling: Round Robin (RR)\n");
             break;
         case PRIORITY:
@@ -70,9 +98,11 @@ int main() {
             printf("Invalid scheduling type selected.\n");
             break;
     }
+
+
     fclose(file);
 
-    printf("Welcome to the program!\n");
+    printf("Escalonador terminou execução de todos processos\n");
 
     // Return 0 to indicate successful execution
     return 0;

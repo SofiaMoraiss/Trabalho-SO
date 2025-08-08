@@ -3,7 +3,6 @@
 #include "processo.h"
 
 
-
 Processo* initProcesso(int PID, int dur, int prioridade, int qtd_threads, int t_chegada) {
     Processo *p = malloc(sizeof(Processo));
     if (p == NULL) {
@@ -18,6 +17,12 @@ Processo* initProcesso(int PID, int dur, int prioridade, int qtd_threads, int t_
 
     return p;
 }
+
+Processo* FCFS(Processo *p) {
+    
+
+    return p; 
+}   
 
 int get_prioridade(Processo *p) {
     return p->prioridade;

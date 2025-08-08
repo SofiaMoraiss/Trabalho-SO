@@ -26,6 +26,9 @@ $(TARGET): $(OBJS)
 run: $(TARGET)
 	./$(TARGET)
 
+val: $(TARGET)
+	valgrind ./$(TARGET)
+
 # Limpa os arquivos compilados
 clean:
 	rm -f $(OBJS) $(TARGET)
