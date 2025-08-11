@@ -6,10 +6,10 @@
 #include "processo.h"
 #include "fila.h"
 
-int compare(const void* a, const void* b){
-    Processo *p1 = (Processo *)a;
-    Processo *p2 = (Processo *)b;
-    return get_t_chegada(p1) - get_t_chegada(p2); // Example comparison based on priority 
+int compare(const void* a, const void* b) {
+    Processo *p1 = *(Processo **)a; // note o * extra
+    Processo *p2 = *(Processo **)b;
+    return get_t_chegada(p1) - get_t_chegada(p2);
 }
 
 typedef enum {
@@ -20,10 +20,11 @@ typedef enum {
 
 int main() {
 
+    int quantum = 500; 
     FILE *file;
     int num, esc;
 
-    file = fopen("entradas/1.txt", "r");
+    file = fopen("entradas/2.txt", "r");
     if (file == NULL) {
         fprintf(stderr, "Não foi possível abrir o arquivo.\n");
         return 1;
@@ -44,7 +45,10 @@ int main() {
         }
         processos[i] = p;
 
-        // // Example usage of getters
+        // Example usage of getters
+    }
+    for (int i = 0; i < num; i++) {
+        Processo *p = processos[i];
         // printf("Process ID: %d\n", get_PID(p));
         // printf("Duration: %d\n", get_dur(p));
         // printf("Priority: %d\n", get_prioridade(p));
@@ -52,7 +56,6 @@ int main() {
         // printf("Arrival Time: %d\n", get_t_chegada(p));
     }
     qsort(processos, num, sizeof(Processo *), compare);
-
     fscanf(file, "%d", &esc);
     
     Escalonamento tipo_escalonamento = (Escalonamento)esc;
@@ -76,20 +79,38 @@ int main() {
             
         case RR:
             //monothreaded
-            int tempo_passado=0;
-            for (int y =0; y<num; y++) {
+            int tempo_passado=0, y=0, nulos=0;
+            while (1) {
+            
                 Processo * p = processos[y];
-                printf("[RR] Executando processo PID %d com quantum 500ms\n", get_PID(p));
-                tempo_passado+=500;
-                if (tempo_passado >= get_dur(p)) {
-                    printf("[RR] Processo PID %d finalizado\n", get_PID(p));
-                    free(p);    
-                } else {
-                    set_dur(p, get_dur(p) - 500);
+                if (p != NULL){
+                    if (tempo_passado >= get_t_chegada(p)){
+                        
+                        printf("[RR] Executando processo PID %d com quantum 500ms\n", get_PID(p));
+                        if (get_dur(p)- quantum<=0) {
+                            printf("[RR] Processo PID %d finalizado\n", get_PID(p));
+                            tempo_passado += get_dur(p);
+                            nulos++;
+                            free(processos[y]);
+                            processos[y] = NULL;  
+                        } else {
+                            set_dur(p, get_dur(p) - quantum);
+                            tempo_passado+=quantum;
+                        }
+                    }
+                    else {
+                        tempo_passado++;
+                    }
+                    
+                }
+                if (nulos == num) {
+                    break;
+                }
+                y++;
+                if (y==num){
+                    y=0;
                 }
             }
-            break;
-            printf("Selected scheduling: Round Robin (RR)\n");
             break;
         case PRIORITY:
             printf("Selected scheduling: Priority Scheduling\n");
