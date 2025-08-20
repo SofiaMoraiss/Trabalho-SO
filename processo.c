@@ -14,6 +14,7 @@ Processo* initProcesso(int PID, int dur, int prioridade, int qtd_threads, int t_
     p->qtd_threads = qtd_threads;
     p->t_chegada = t_chegada;
     p->PID = PID;
+    p->running = 0; 
 
     return p;
 }

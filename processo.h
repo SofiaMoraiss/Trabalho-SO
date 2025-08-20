@@ -7,6 +7,7 @@ typedef struct Processo {
     int prioridade;
     int qtd_threads;
     int t_chegada;
+    int running; // flag para indicar se o processo esta em execução
 } Processo;
 
 Processo* initProcesso(int PID, int dur, int prioridade, int qtd_threads, int t_chegada);
