@@ -67,8 +67,8 @@ int main() {
         for (int y = 0; y < num; y++) {
             PCB *p = processos[y];
             printf("[FCFS] Executando processo PID %d\n", get_pid(p));
+            running(p, get_remaining_time(p));
             printf("[FCFS] Processo PID %d finalizado\n", get_pid(p));
-            free(p);
         }
         break;
 
@@ -162,6 +162,12 @@ int main() {
     default:
         printf("Invalid scheduling type selected.\n");
         break;
+    }
+
+    for (int i = 0; i < num; i++) {
+        if (processos[i] != NULL) {
+            destroyPCB(processos[i]);
+        }
     }
 
     fclose(file);

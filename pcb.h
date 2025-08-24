@@ -2,6 +2,8 @@
 #define PCB_H
 
 #include <pthread.h>
+#include <unistd.h>   // para usleep()
+
 
 // Estados possíveis do processo
 typedef enum {
@@ -20,6 +22,7 @@ typedef struct {
     int priority;            // Prioridade
     int num_threads;         // Número de threads do processo
     int start_time;          // Tempo de chegada
+    int thread_time;        // Tempo de CPU por thread
 
     ProcessState state;      // Estado atual do processo
     pthread_mutex_t mutex;   // Mutex para sincronização
@@ -28,6 +31,7 @@ typedef struct {
 } PCB;
 
 // Funções utilitárias
+PCB* running(PCB* pcb, int tempo);
 PCB* initPCB(int pid, int dur, int prioridade, int qtd_threads, int t_chegada);
 void destroyPCB(PCB* pcb);
 
@@ -37,5 +41,7 @@ int get_priority(PCB* pcb);
 void set_priority(PCB* pcb, int p);
 int get_start_time(PCB* pcb);
 int get_pid(PCB* pcb);
+int get_num_threads(PCB* pcb);
+int get_process_len(PCB* pcb);
 
 #endif

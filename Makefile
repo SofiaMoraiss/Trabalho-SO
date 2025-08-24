@@ -12,7 +12,7 @@ SRCS := $(wildcard *.c)
 OBJS := $(SRCS:.c=.o)
 
 # Regra padrão
-all: $(TARGET)
+all: $(TARGET) clean
 
 # Compila o executável
 $(TARGET): $(OBJS)
@@ -26,14 +26,14 @@ $(TARGET): $(OBJS)
 run: $(TARGET)
 	./$(TARGET)
 
-val: $(TARGET)
-	valgrind ./$(TARGET)
+val: $(TARGET) clean
+	valgrind --leak-check=full ./$(TARGET)
 
 # Limpa os arquivos compilados
 clean:
-	rm -f $(OBJS) $(TARGET)
+	rm -f $(OBJS)
 
 # Recompila do zero
 rebuild: clean all
 
-.PHONY: all clean rebuild run
+.PHONY: all clean rebuild run val
