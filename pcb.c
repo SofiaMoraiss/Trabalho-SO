@@ -6,8 +6,6 @@
 // Inicializa um PCB
 
 PCB* thread_running(PCB* pcb, int tempo) {
-    const int quantum = 0.5;
-
     pthread_mutex_lock(&pcb->mutex);
 
     if (pcb->state == TERMINATED) {
@@ -18,17 +16,18 @@ PCB* thread_running(PCB* pcb, int tempo) {
     pcb->state = RUNNING;
     pthread_mutex_unlock(&pcb->mutex);
 
-    // Simula execução por 500 ms (mesmo se precisar de menos CPU)
-    sleep(quantum);
+    // Executa por 500 ms (independente do tempo lógico)
+    usleep(500000);
 
     pthread_mutex_lock(&pcb->mutex);
 
-    // Desconta o "tempo lógico" da thread (thread_time ou tempo recebido)
+    // Desconta apenas o "tempo lógico" da thread
     pcb->remaining_time -= tempo;
+
     if (pcb->remaining_time <= 0) {
         pcb->remaining_time = 0;
         pcb->state = TERMINATED;
-        pthread_cond_broadcast(&pcb->cv); // acorda todas para encerrar
+        pthread_cond_broadcast(&pcb->cv);
     } else {
         pcb->state = READY;
     }
@@ -39,19 +38,34 @@ PCB* thread_running(PCB* pcb, int tempo) {
 
 
 PCB* running(PCB* pcb, int tempo) {
-    // Enquanto houver tempo restante no processo
-    while (1) {
+    int tempo_restante = tempo;
+
+    printf("Processo PID %d iniciando execução por %d ms\n", pcb->pid, tempo);
+
+    while (tempo_restante > 0) {
         pthread_mutex_lock(&pcb->mutex);
         if (pcb->state == TERMINATED) {
             pthread_mutex_unlock(&pcb->mutex);
-            break;
+            return NULL; // encerra imediatamente se já terminou
         }
         pthread_mutex_unlock(&pcb->mutex);
 
-        // Escalona todas as threads do processo
-        for (int i = 0; i < pcb->num_threads; i++) {
-            thread_running(pcb, tempo);
+        // Roda uma thread, usando o tempo restante do quantum
+        thread_running(pcb, tempo_restante);
+
+        // Verifica logo depois da execução se terminou
+        pthread_mutex_lock(&pcb->mutex);
+        if (pcb->state == TERMINATED) {
+            pthread_mutex_unlock(&pcb->mutex);
+            return NULL; // encerra imediatamente se terminou durante a execução
         }
+        pthread_mutex_unlock(&pcb->mutex);
+
+        tempo_restante -= 500; // cada execução simula 500ms de CPU
+        printf("Processo PID %d: tempo restante %d ms\n", pcb->pid, pcb->remaining_time);
+
+        // Se terminou de usar seu tempo, devolve ao escalonador
+        if (pcb->state == READY) break;
     }
 
     return pcb;
