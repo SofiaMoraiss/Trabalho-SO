@@ -24,7 +24,7 @@ $(TARGET): $(OBJS)
 
 # Regra para executar o programa
 run: $(TARGET)
-	./$(TARGET)
+	./$(TARGET) >out1.txt
 
 val: $(TARGET) clean
 	valgrind --leak-check=full ./$(TARGET)

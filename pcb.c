@@ -1,19 +1,137 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "pcb.h"
+#include "fila.h"
 #include <unistd.h> // para usleep()
 
-// Esta função agora é responsável apenas por simular uma fatia de trabalho.
-// Ela não acessa o PCB ou atualiza o tempo restante, evitando erros de memória.
+typedef enum
+{
+    FCFS = 1,
+    RR = 2,
+    PRIORITY = 3
+} Escalonamento;
+
+int comparePriority(void *a, void *b)
+{
+    PCB *p1 = (PCB *)a;
+    PCB *p2 = (PCB *)b;
+    return get_priority(p1) - get_priority(p2);
+}
+
 static void* threadWork(void* arg) {
     (void)arg; // Declara que o parâmetro 'arg' é intencionalmente não utilizado.
     sleep(0.5); 
     return NULL;
 }
 
-// A função running é responsável por simular a execução e, em seguida,
-// atualizar o tempo restante e o estado do PCB.
-PCB* running(PCB* pcb, int tempo) {
+void fcfs_mono(PCB* processos[], int num, int quantum) {
+    for (int y = 0; y < num; y++)
+    {
+        PCB *p = processos[y];
+        printf("[FCFS] Executando processo PID %d\n", get_pid(p));
+        running(p, get_remaining_time(p), FCFS);
+    }
+}
+
+void rr_mono(PCB* processos[], int num, int quantum) {
+    int tempo_passado = 0, y = 0, nulos = 0;
+        while (1)
+        {
+            PCB *p = processos[y];
+            if (p != NULL)
+            {
+                if (tempo_passado >= get_start_time(p))
+                {
+                    printf("[RR] Executando processo PID %d com quantum 500ms\n", get_pid(p));
+                    running(p, quantum, RR);
+                    if (p->state == TERMINATED)
+                    {
+                        tempo_passado += quantum;
+                        nulos++;
+                        processos[y] = NULL; // arrumei aqui: antes você fazia `p = NULL`, mas isso não apagava do vetor
+                    }
+                    else
+                    {
+                        tempo_passado += quantum;
+                    }
+                }
+                else
+                {
+                    tempo_passado += quantum;
+                }
+            }
+            else
+            {
+                tempo_passado++;
+            }
+
+            if (nulos == num)
+                break;
+
+            y++;
+            if (y == num)
+                y = 0;
+        }
+}
+
+void priority_mono(PCB* processos[], int num, int quantum) {
+     Queue *prontos = createQueue();
+        int tempo_passado = 0;
+        int processos_finalizados = 0;
+        int idx = 0;
+        PCB *atual = NULL;
+
+        while (processos_finalizados < num)
+        {
+            while (idx < num && get_start_time(processos[idx]) <= tempo_passado)
+            {
+                enqueue(prontos, processos[idx]);
+                idx++;
+            }
+
+            if (atual == NULL)
+            {
+                if (isEmpty(prontos))
+                {
+                    tempo_passado++;
+                    continue;
+                }
+                sortQueue(prontos, comparePriority);
+                atual = (PCB *)dequeue(prontos);
+                printf("[PRIORITY] Executando processo PID %d com prioridade %d\n",
+                       get_pid(atual), get_priority(atual));
+            }
+            else
+            {
+                if (!isEmpty(prontos))
+                {
+                    sortQueue(prontos, comparePriority);
+                    PCB *proximo = (PCB *)prontos->front->data;
+
+                    if (get_priority(proximo) < get_priority(atual))
+                    {
+                        enqueue(prontos, atual);
+                        atual = (PCB *)dequeue(prontos);
+                        printf("[PRIORITY] Executando processo PID %d com prioridade %d\n",
+                               get_pid(atual), get_priority(atual));
+                    }
+                }
+            }
+
+            running(atual, quantum, PRIORITY);
+            tempo_passado += quantum;
+
+            if (atual->state == TERMINATED)
+            {
+                processos_finalizados++;
+                atual = NULL;
+            }
+        }
+        destroyQueue(prontos);
+}
+
+
+PCB* running(PCB* pcb, int tempo, int tipo) {
     if (!pcb) return NULL;
     
     //printf("Escalonador: processo PID %d executando por %d ms\n", pcb->pid, tempo);
@@ -25,11 +143,20 @@ PCB* running(PCB* pcb, int tempo) {
     if (pcb->remaining_time <= 0) {
         pcb->remaining_time = 0;
         pcb->state = TERMINATED;
-        printf("[PRIORITY] Processo PID %d finalizado\n", pcb->pid);
+        if (tipo == 3){
+            printf("[PRIORITY] Processo PID %d finalizado\n", pcb->pid);
+        }
+        else if (tipo == 2) {
+            printf("[RR] Processo PID %d finalizado\n", pcb->pid);
+        }
+        else {
+            printf("[FCFS] Processo PID %d finalizado\n", pcb->pid);
+        }
     }
     
     return pcb;
 }
+
 
 // Cria e espera por todas as threads de um processo.
 void run_threads(PCB* pcb) {
@@ -41,6 +168,27 @@ void run_threads(PCB* pcb) {
         pthread_join(pcb->thread_ids[i], NULL);
     }
 }
+
+void fcfs_multiprocessador(PCB* processos[], int num, int quantum) {
+    int i = 0;
+    while (i < num) {
+        PCB* cpu0 = processos[i];
+        PCB* cpu1 = (i + 1 < num) ? processos[i + 1] : NULL;
+
+        if (cpu1 == NULL) {
+            // só 1 processo → CPUs executam ele juntas
+            running_multiprocessador(cpu0, cpu0, get_remaining_time(cpu0), 1);
+            i++;
+        } else {
+            // 2 processos → CPUs pegam diferentes
+            running_multiprocessador(cpu0, cpu1, quantum, 1);
+
+            if (cpu0->state == TERMINATED) i++;
+            if (cpu1->state == TERMINATED) i++;
+        }
+    }
+}
+
 
 PCB* initPCB(int pid, int dur, int prioridade, int qtd_threads, int t_chegada) {
     PCB *p = malloc(sizeof(PCB));

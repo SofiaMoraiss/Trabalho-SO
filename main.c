@@ -3,22 +3,9 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
-#include "pcb.h" // agora é pcb.h
+#include "pcb.h" 
 #include "fila.h"
 
-int compare(const void *a, const void *b)
-{
-    PCB *p1 = *(PCB **)a;
-    PCB *p2 = *(PCB **)b;
-    return get_start_time(p1) - get_start_time(p2);
-}
-
-int comparePriority(void *a, void *b)
-{
-    PCB *p1 = (PCB *)a;
-    PCB *p2 = (PCB *)b;
-    return get_priority(p1) - get_priority(p2);
-}
 
 typedef enum
 {
@@ -27,13 +14,22 @@ typedef enum
     PRIORITY = 3
 } Escalonamento;
 
+int compare(const void *a, const void *b)
+{
+    PCB *p1 = *(PCB **)a;
+    PCB *p2 = *(PCB **)b;
+    return get_start_time(p1) - get_start_time(p2);
+}
+
+
+
 int main()
 {
     int quantum = 500;
     FILE *file;
     int num, esc;
 
-    file = fopen("entradas/3.txt", "r");
+    file = fopen("entradas/2.txt", "r");
     if (file == NULL)
     {
         fprintf(stderr, "Não foi possível abrir o arquivo.\n");
@@ -73,109 +69,21 @@ int main()
     switch (tipo_escalonamento)
     {
     case FCFS:
-        for (int y = 0; y < num; y++)
-        {
-            PCB *p = processos[y];
-            printf("[FCFS] Executando processo PID %d\n", get_pid(p));
-            running(p, get_remaining_time(p));
-            printf("[FCFS] Processo PID %d finalizado\n", get_pid(p));
-        }
+        fcfs_mono(processos, num, quantum);
+        //fcfs_multiprocessador(processos, num, quantum);
         break;
 
     case RR:
     {
-        int tempo_passado = 0, y = 0, nulos = 0;
-        while (1)
-        {
-            PCB *p = processos[y];
-            if (p != NULL)
-            {
-                if (tempo_passado >= get_start_time(p))
-                {
-                    printf("[RR] Executando processo PID %d com quantum 500ms\n", get_pid(p));
-                    if (get_remaining_time(p) - quantum <= 0)
-                    {
-                        printf("[RR] Processo PID %d finalizado\n", get_pid(p));
-                        tempo_passado += get_remaining_time(p);
-                        nulos++;
-                        free(processos[y]);
-                        processos[y] = NULL;
-                    }
-                    else
-                    {
-                        set_remaining_time(p, get_remaining_time(p) - quantum);
-                        tempo_passado += quantum;
-                    }
-                }
-                else
-                {
-                    tempo_passado++;
-                }
-            }
-            if (nulos == num)
-                break;
-            y++;
-            if (y == num)
-                y = 0;
-        }
+        rr_mono(processos, num, quantum);
+        //rr_multiprocessador(processos, num, quantum);
         break;
     }
 
     case PRIORITY:
     {
-        Queue *prontos = createQueue();
-        int tempo_passado = 0;
-        int processos_finalizados = 0;
-        int idx = 0;
-        PCB *atual = NULL;
-
-        while (processos_finalizados < num)
-        {
-            while (idx < num && get_start_time(processos[idx]) <= tempo_passado)
-            {
-                enqueue(prontos, processos[idx]);
-                idx++;
-            }
-
-            if (atual == NULL)
-            {
-                if (isEmpty(prontos))
-                {
-                    tempo_passado++;
-                    continue; 
-                }
-                sortQueue(prontos, comparePriority);
-                atual = (PCB *)dequeue(prontos);
-                printf("[PRIORITY] Executando processo PID %d com prioridade %d\n",
-                       get_pid(atual), get_priority(atual));
-            }
-            else 
-            {
-                if (!isEmpty(prontos))
-                {
-                    sortQueue(prontos, comparePriority);
-                    PCB *proximo = (PCB *)prontos->front->data;
-
-                    if (get_priority(proximo) < get_priority(atual))
-                    {
-                        enqueue(prontos, atual);
-                        atual = (PCB *)dequeue(prontos);
-                        printf("[PRIORITY] Executando processo PID %d com prioridade %d\n",
-                               get_pid(atual), get_priority(atual));
-                    }
-                }
-            }
-
-            running(atual, quantum);
-            tempo_passado += quantum;
-
-            if (atual->state == TERMINATED)
-            {
-                processos_finalizados++;
-                atual = NULL; 
-            }
-        }
-        destroyQueue(prontos);
+       priority_mono(processos, num, quantum);
+       //priority_multi(processos, num, quantum);
         break;
     }
 
