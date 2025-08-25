@@ -32,6 +32,9 @@ typedef struct {
 
 // Funções utilitárias
 PCB* running(PCB* pcb, int tempo);
+PCB* thread_running(PCB* pcb, int tempo);
+void* thread_func(void* arg);
+void run_threads(PCB* pcb);
 PCB* initPCB(int pid, int dur, int prioridade, int qtd_threads, int t_chegada);
 void destroyPCB(PCB* pcb);
 

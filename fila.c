@@ -105,3 +105,19 @@ void sortQueue(Queue* queue, int (*compare)(void*, void*)) {
 
     free(array);
 }
+
+void destroyQueue(Queue* queue) {
+    if (!queue) {
+        return;
+    }
+    if (!isEmpty(queue)) {
+        Node* current = queue->front;
+        Node* next_node;
+        do {
+            next_node = current->next;
+            free(current);
+            current = next_node;
+        } while (current != queue->front);
+    }
+    free(queue);
+}

@@ -29,4 +29,7 @@ void displayQueue(Queue* queue);
 
 void sortQueue(Queue* queue, int (*compare)(void*, void*));
 
+// Função para destruir a fila e liberar memória
+void destroyQueue(Queue* queue);
+
 #endif // FILA_H

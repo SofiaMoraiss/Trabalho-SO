@@ -1,74 +1,45 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "pcb.h"
-#include <unistd.h>   // para usleep()
+#include <unistd.h> // para usleep()
 
-// Inicializa um PCB
+// Esta função agora é responsável apenas por simular uma fatia de trabalho.
+// Ela não acessa o PCB ou atualiza o tempo restante, evitando erros de memória.
+static void* threadWork(void* arg) {
+    (void)arg; // Declara que o parâmetro 'arg' é intencionalmente não utilizado.
+    sleep(0.5); 
+    return NULL;
+}
 
-PCB* thread_running(PCB* pcb, int tempo) {
-    pthread_mutex_lock(&pcb->mutex);
+// A função running é responsável por simular a execução e, em seguida,
+// atualizar o tempo restante e o estado do PCB.
+PCB* running(PCB* pcb, int tempo) {
+    if (!pcb) return NULL;
+    
+    //printf("Escalonador: processo PID %d executando por %d ms\n", pcb->pid, tempo);
+    
+    run_threads(pcb);
 
-    if (pcb->state == TERMINATED) {
-        pthread_mutex_unlock(&pcb->mutex);
-        return pcb;
-    }
-
-    pcb->state = RUNNING;
-    pthread_mutex_unlock(&pcb->mutex);
-
-    // Executa por 500 ms (independente do tempo lógico)
-    usleep(500000);
-
-    pthread_mutex_lock(&pcb->mutex);
-
-    // Desconta apenas o "tempo lógico" da thread
     pcb->remaining_time -= tempo;
-
+    
     if (pcb->remaining_time <= 0) {
         pcb->remaining_time = 0;
         pcb->state = TERMINATED;
-        pthread_cond_broadcast(&pcb->cv);
-    } else {
-        pcb->state = READY;
+        printf("[PRIORITY] Processo PID %d finalizado\n", pcb->pid);
     }
-
-    pthread_mutex_unlock(&pcb->mutex);
+    
     return pcb;
 }
 
-
-PCB* running(PCB* pcb, int tempo) {
-    int tempo_restante = tempo;
-
-    printf("Processo PID %d iniciando execução por %d ms\n", pcb->pid, tempo);
-
-    while (tempo_restante > 0) {
-        pthread_mutex_lock(&pcb->mutex);
-        if (pcb->state == TERMINATED) {
-            pthread_mutex_unlock(&pcb->mutex);
-            return NULL; // encerra imediatamente se já terminou
-        }
-        pthread_mutex_unlock(&pcb->mutex);
-
-        // Roda uma thread, usando o tempo restante do quantum
-        thread_running(pcb, tempo_restante);
-
-        // Verifica logo depois da execução se terminou
-        pthread_mutex_lock(&pcb->mutex);
-        if (pcb->state == TERMINATED) {
-            pthread_mutex_unlock(&pcb->mutex);
-            return NULL; // encerra imediatamente se terminou durante a execução
-        }
-        pthread_mutex_unlock(&pcb->mutex);
-
-        tempo_restante -= 500; // cada execução simula 500ms de CPU
-        printf("Processo PID %d: tempo restante %d ms\n", pcb->pid, pcb->remaining_time);
-
-        // Se terminou de usar seu tempo, devolve ao escalonador
-        if (pcb->state == READY) break;
+// Cria e espera por todas as threads de um processo.
+void run_threads(PCB* pcb) {
+    for (int i = 0; i < pcb->num_threads; i++) {
+        pthread_create(&pcb->thread_ids[i], NULL, threadWork, NULL);
     }
 
-    return pcb;
+    for (int i = 0; i < pcb->num_threads; i++) {
+        pthread_join(pcb->thread_ids[i], NULL);
+    }
 }
 
 PCB* initPCB(int pid, int dur, int prioridade, int qtd_threads, int t_chegada) {
@@ -90,7 +61,6 @@ PCB* initPCB(int pid, int dur, int prioridade, int qtd_threads, int t_chegada) {
     pthread_mutex_init(&p->mutex, NULL);
     pthread_cond_init(&p->cv, NULL);
 
-    // aloca espaço para as threads
     p->thread_ids = malloc(sizeof(pthread_t) * qtd_threads);
     if (!p->thread_ids) {
         perror("Erro ao alocar threads do PCB");
@@ -101,7 +71,6 @@ PCB* initPCB(int pid, int dur, int prioridade, int qtd_threads, int t_chegada) {
     return p;
 }
 
-// Libera memória do PCB
 void destroyPCB(PCB* pcb) {
     if (!pcb) return;
     free(pcb->thread_ids);
@@ -110,7 +79,6 @@ void destroyPCB(PCB* pcb) {
     free(pcb);
 }
 
-// Getters e Setters
 int get_remaining_time(PCB* pcb) {
     return pcb->remaining_time;
 }
@@ -142,4 +110,68 @@ int get_num_threads(PCB* pcb) {
 int get_process_len(PCB* pcb) {
     return pcb->process_len;
 }
- 
+
+// PCB* thread_running(PCB* pcb, int tempo) {
+//     pthread_mutex_lock(&pcb->mutex);
+
+//     if (pcb->state == TERMINATED) {
+//         pthread_mutex_unlock(&pcb->mutex);
+//         return pcb;
+//     }
+
+//     pcb->state = RUNNING;
+//     pthread_mutex_unlock(&pcb->mutex);
+
+//     // Executa por 500 ms (independente do tempo lógico)
+//     usleep(500000);
+
+//     pthread_mutex_lock(&pcb->mutex);
+
+//     // Desconta apenas o "tempo lógico" da thread
+//     pcb->remaining_time -= tempo;
+
+//     if (pcb->remaining_time <= 0) {
+//         pcb->remaining_time = 0;
+//         pcb->state = TERMINATED;
+//         pthread_cond_broadcast(&pcb->cv);
+//     } else {
+//         pcb->state = READY;
+//     }
+
+//     pthread_mutex_unlock(&pcb->mutex);
+//     return pcb;
+// }
+
+// PCB* running(PCB* pcb, int tempo) {
+//     int tempo_restante = tempo;
+
+//     printf("Processo PID %d iniciando execução por %d ms\n", pcb->pid, tempo);
+
+//     while (tempo_restante > 0) {
+//         pthread_mutex_lock(&pcb->mutex);
+//         if (pcb->state == TERMINATED) {
+//             pthread_mutex_unlock(&pcb->mutex);
+//             return NULL; // encerra imediatamente se já terminou
+//         }
+//         pthread_mutex_unlock(&pcb->mutex);
+
+//         // Roda uma thread, usando o tempo restante do quantum
+//         thread_running(pcb, tempo_restante);
+
+//         // Verifica logo depois da execução se terminou
+//         pthread_mutex_lock(&pcb->mutex);
+//         if (pcb->state == TERMINATED) {
+//             pthread_mutex_unlock(&pcb->mutex);
+//             return NULL; // encerra imediatamente se terminou durante a execução
+//         }
+//         pthread_mutex_unlock(&pcb->mutex);
+
+//         tempo_restante -= 500; // cada execução simula 500ms de CPU
+//         printf("Processo PID %d: tempo restante %d ms\n", pcb->pid, pcb->remaining_time);
+
+//         // Se terminou de usar seu tempo, devolve ao escalonador
+//         if (pcb->state == READY) break;
+//     }
+
+//     return pcb;
+// }
