@@ -24,7 +24,7 @@ static void* threadWork(void* arg) {
     return NULL;
 }
 
-void fcfs_mono(PCB* processos[], int num, int quantum) {
+void fcfs_mono(PCB* processos[], int num) {
     for (int y = 0; y < num; y++)
     {
         PCB *p = processos[y];
@@ -169,24 +169,116 @@ void run_threads(PCB* pcb) {
     }
 }
 
-void fcfs_multiprocessador(PCB* processos[], int num, int quantum) {
-    int i = 0;
-    while (i < num) {
-        PCB* cpu0 = processos[i];
-        PCB* cpu1 = (i + 1 < num) ? processos[i + 1] : NULL;
+// void fcfs_multiprocessador(PCB* processos[], int num, int quantum) {
+//     int i = 0;
+//     while (i < num) {
+//         PCB* cpu0 = processos[i];
+//         PCB* cpu1 = (i + 1 < num) ? processos[i + 1] : NULL;
 
-        if (cpu1 == NULL) {
-            // só 1 processo → CPUs executam ele juntas
-            running_multiprocessador(cpu0, cpu0, get_remaining_time(cpu0), 1);
-            i++;
-        } else {
-            // 2 processos → CPUs pegam diferentes
-            running_multiprocessador(cpu0, cpu1, quantum, 1);
+//         if (cpu1 == NULL) {
+//             // só 1 processo → CPUs executam ele juntas
+//             running_multiprocessador(cpu0, cpu0, get_remaining_time(cpu0), 1);
+//             i++;
+//         } else {
+//             // 2 processos → CPUs pegam diferentes
+//             running_multiprocessador(cpu0, cpu1, quantum, 1);
 
-            if (cpu0->state == TERMINATED) i++;
-            if (cpu1->state == TERMINATED) i++;
-        }
+//             if (cpu0->state == TERMINATED) i++;
+//             if (cpu1->state == TERMINATED) i++;
+//         }
+//     }
+// }
+
+#define NUM_PROCESSADORES 2 // já definido no seu código
+
+void priority_multi(PCB* processos[], int num, int quantum) {
+    Queue *prontos = createQueue();
+    PCB *processadores[NUM_PROCESSADORES];
+    for (int i = 0; i < NUM_PROCESSADORES; i++) {
+        processadores[i] = NULL;
     }
+
+    int tempo_passado = 0;
+    int processos_finalizados = 0;
+    int idx_processos = 0;
+
+    while (processos_finalizados < num) {
+        // 1. Adiciona processos que chegaram até o tempo atual
+        while (idx_processos < num && get_start_time(processos[idx_processos]) <= tempo_passado) {
+            enqueue(prontos, processos[idx_processos]);
+            idx_processos++;
+        }
+
+        // 2. Preempção
+        if (!isEmpty(prontos)) {
+            sortQueue(prontos, comparePriority);
+            PCB *proximo_na_fila = (PCB *)prontos->front->data;
+
+            PCB *processo_a_preemptar = NULL;
+            int processador_a_preemptar_idx = -1;
+
+            for (int i = 0; i < NUM_PROCESSADORES; i++) {
+                if (processadores[i] != NULL) {
+                    if (processo_a_preemptar == NULL || get_priority(processadores[i]) > get_priority(processo_a_preemptar)) {
+                        processo_a_preemptar = processadores[i];
+                        processador_a_preemptar_idx = i;
+                    }
+                }
+            }
+
+            if (processo_a_preemptar != NULL && get_priority(proximo_na_fila) < get_priority(processo_a_preemptar)) {
+                enqueue(prontos, processo_a_preemptar); 
+                processadores[processador_a_preemptar_idx] = NULL; 
+            }
+        }
+
+        // 3. Aloca processos em processadores livres considerando threads
+        sortQueue(prontos, comparePriority);
+
+        for (int i = 0; i < NUM_PROCESSADORES; i++) {
+            if (processadores[i] == NULL && !isEmpty(prontos)) {
+                PCB *atual = (PCB *)dequeue(prontos);
+                int threads = get_num_threads(atual);
+
+                // O processo pode ocupar até "threads" CPUs, mas não mais do que CPUs livres
+                int cpus_livres = 0;
+                for (int j = 0; j < NUM_PROCESSADORES; j++) {
+                    if (processadores[j] == NULL) cpus_livres++;
+                }
+
+                int cpus_para_ocupar = (threads < cpus_livres) ? threads : cpus_livres;
+
+                for (int j = 0; j < NUM_PROCESSADORES && cpus_para_ocupar > 0; j++) {
+                    if (processadores[j] == NULL) {
+                        processadores[j] = atual; // mesma PCB em várias CPUs
+                        printf("[PRIORITY] Executando processo PID %d // processador %d\n", get_pid(atual), j);
+                        cpus_para_ocupar--;
+                    }
+                }
+            }
+        }
+
+        // 4. Executa um quantum em cada processador
+        for (int i = 0; i < NUM_PROCESSADORES; i++) {
+            if (processadores[i] != NULL) {
+                running(processadores[i], quantum, PRIORITY);
+
+                if (processadores[i]->state == TERMINATED) {
+                    // liberar todos os processadores ocupados pelo mesmo processo
+                    for (int j = 0; j < NUM_PROCESSADORES; j++) {
+                        if (processadores[j] == processadores[i]) {
+                            processadores[j] = NULL;
+                        }
+                    }
+                    processos_finalizados++;
+                }
+            }
+        }
+
+        tempo_passado += quantum;
+    }
+
+    destroyQueue(prontos);
 }
 
 

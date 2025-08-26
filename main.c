@@ -29,7 +29,7 @@ int main()
     FILE *file;
     int num, esc;
 
-    file = fopen("entradas/2.txt", "r");
+    file = fopen("entradas/7.txt", "r");
     if (file == NULL)
     {
         fprintf(stderr, "Não foi possível abrir o arquivo.\n");
@@ -69,7 +69,7 @@ int main()
     switch (tipo_escalonamento)
     {
     case FCFS:
-        fcfs_mono(processos, num, quantum);
+        //fcfs_mono(processos, num);
         //fcfs_multiprocessador(processos, num, quantum);
         break;
 
@@ -82,8 +82,8 @@ int main()
 
     case PRIORITY:
     {
-       priority_mono(processos, num, quantum);
-       //priority_multi(processos, num, quantum);
+       //priority_mono(processos, num, quantum);
+       priority_multi(processos, num, quantum);
         break;
     }
 
