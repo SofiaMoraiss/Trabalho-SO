@@ -4,6 +4,8 @@
 #include "fila.h"
 #include <unistd.h> // para usleep()
 
+#define NUM_PROCESSADORES 2 // já definido no seu código
+
 typedef enum
 {
     FCFS = 1,
@@ -169,27 +171,126 @@ void run_threads(PCB* pcb) {
     }
 }
 
-// void fcfs_multiprocessador(PCB* processos[], int num, int quantum) {
-//     int i = 0;
-//     while (i < num) {
-//         PCB* cpu0 = processos[i];
-//         PCB* cpu1 = (i + 1 < num) ? processos[i + 1] : NULL;
 
-//         if (cpu1 == NULL) {
-//             // só 1 processo → CPUs executam ele juntas
-//             running_multiprocessador(cpu0, cpu0, get_remaining_time(cpu0), 1);
-//             i++;
-//         } else {
-//             // 2 processos → CPUs pegam diferentes
-//             running_multiprocessador(cpu0, cpu1, quantum, 1);
+void fcfs_multi(PCB* processos[], int num, int quantum) {
+    // Array para simular os processadores
+    PCB *processadores[NUM_PROCESSADORES] = {NULL};
+    int processos_finalizados = 0;
+    int idx_processos = 0;
+    int tempo_passado = 0;
 
-//             if (cpu0->state == TERMINATED) i++;
-//             if (cpu1->state == TERMINATED) i++;
-//         }
-//     }
-// }
+    printf("Iniciando FCFS com %d processadores.\n", NUM_PROCESSADORES);
 
-#define NUM_PROCESSADORES 2 // já definido no seu código
+    while (processos_finalizados < num) {
+        // 1. Tenta alocar processos nas CPUs livres
+        for (int i = 0; i < NUM_PROCESSADORES; i++) {
+            if (processadores[i] == NULL) {
+                // Encontra o próximo processo pronto na fila ordenada por tempo de chegada
+                PCB *p = NULL;
+                for (int j = 0; j < num; j++) {
+                    if (processos[j]->state != TERMINATED && get_start_time(processos[j]) <= tempo_passado) {
+                        p = processos[j];
+                        break; 
+                    }
+                }
+
+                if (p != NULL) {
+                    processadores[i] = p;
+                    // Lógica para alocar o mesmo processo a várias CPUs, se houver threads suficientes
+                    for (int j = i + 1; j < NUM_PROCESSADORES; j++) {
+                        if (p->num_threads > (j - i) && processadores[j] == NULL) {
+                            processadores[j] = p;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(p), i);
+                }
+            }
+        }
+        
+        // 2. Executa os processos em cada processador
+        for (int i = 0; i < NUM_PROCESSADORES; i++) {
+            if (processadores[i] != NULL) {
+                running(processadores[i], quantum, FCFS);
+                
+                if (processadores[i]->state == TERMINATED) {
+                    // Libera todas as CPUs ocupadas pelo mesmo processo
+                    PCB *terminado = processadores[i];
+                    for (int j = 0; j < NUM_PROCESSADORES; j++) {
+                        if (processadores[j] == terminado) {
+                            processadores[j] = NULL;
+                        }
+                    }
+                    printf("[FCFS] Processo PID %d finalizado\n", get_pid(terminado));
+                    processos_finalizados++;
+                }
+            }
+        }
+
+        // Avança o tempo
+        tempo_passado += quantum;
+    }
+    
+    printf("Escalonador terminou execução de todos processos\n");
+}
+void rr_multiprocessador(PCB* processos[], int num, int quantum) {
+    Queue *prontos = createQueue();
+    PCB *processadores[NUM_PROCESSADORES] = {NULL};
+    int processos_finalizados = 0;
+    int idx_chegada = 0;
+    int tempo_passado = 0;
+    
+    printf("Iniciando Round Robin com %d processadores.\n", NUM_PROCESSADORES);
+
+    while (processos_finalizados < num) {
+        // Adiciona processos que chegaram na fila de prontos
+        while (idx_chegada < num && get_start_time(processos[idx_chegada]) <= tempo_passado) {
+            enqueue(prontos, processos[idx_chegada]);
+            idx_chegada++;
+        }
+
+        // Aloca processos da fila de prontos para CPUs livres
+        for (int i = 0; i < NUM_PROCESSADORES; i++) {
+            if (processadores[i] == NULL && !isEmpty(prontos)) {
+                processadores[i] = (PCB *)dequeue(prontos);
+                printf("[RR] Executando processo PID %d com quantum %dms // processador %d\n", 
+                       get_pid(processadores[i]), quantum, i);
+            }
+        }
+        
+        // Executa um quantum em cada processador
+        for (int i = 0; i < NUM_PROCESSADORES; i++) {
+            if (processadores[i] != NULL) {
+                // Salva o processo atual antes de chamar running
+                PCB* processo_atual = processadores[i];
+                running(processo_atual, quantum, RR);
+
+                if (processo_atual->state == TERMINATED) {
+                    // Impressão da mensagem de finalização
+                    processos_finalizados++;
+                    
+                    // Libera todas as CPUs ocupadas pelo mesmo processo
+                    for (int j = 0; j < NUM_PROCESSADORES; j++) {
+                        if (processadores[j] != NULL && get_pid(processadores[j]) == get_pid(processo_atual)) {
+                            processadores[j] = NULL;
+                        }
+                    }
+                } else {
+                    // Preempção: se não terminou, retorna para a fila de prontos
+                    enqueue(prontos, processo_atual);
+                    processadores[i] = NULL; // Libera o processador
+                }
+            }
+        }
+        
+        // Avança o tempo
+        tempo_passado += quantum;
+    }
+    
+    destroyQueue(prontos);
+}
 
 void priority_multi(PCB* processos[], int num, int quantum) {
     Queue *prontos = createQueue();

@@ -36,7 +36,7 @@ PCB* thread_running(PCB* pcb, int tempo);
 void* thread_func(void* arg);
 void run_threads(PCB* pcb);
 //void running_multiprocessador(PCB* cpu0, PCB* cpu1, int quantum, int tipo);
-void fcfs_multiprocessador(PCB* processos[], int num, int quantum); 
+void fcfs_multi(PCB* processos[], int num, int quantum); 
 void fcfs_mono(PCB* processos[], int num); 
 void rr_mono(PCB* processos[], int num, int quantum);
 void priority_mono(PCB* processos[], int num, int quantum); 

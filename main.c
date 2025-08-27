@@ -3,9 +3,8 @@
 #include <string.h>
 #include <math.h>
 #include <ctype.h>
-#include "pcb.h" 
+#include "pcb.h"
 #include "fila.h"
-
 
 typedef enum
 {
@@ -21,15 +20,19 @@ int compare(const void *a, const void *b)
     return get_start_time(p1) - get_start_time(p2);
 }
 
-
-
-int main()
+int main(int argc, char *argv[])
 {
     int quantum = 500;
     FILE *file;
     int num, esc;
 
-    file = fopen("entradas/7.txt", "r");
+    if (argc < 2)
+    {
+        fprintf(stderr, "Uso: %s <caminho_para_o_arquivo_de_entrada>\n", argv[0]);
+        return 1;
+    }
+
+    file = fopen(argv[1], "r");
     if (file == NULL)
     {
         fprintf(stderr, "Não foi possível abrir o arquivo.\n");
@@ -69,21 +72,18 @@ int main()
     switch (tipo_escalonamento)
     {
     case FCFS:
-        //fcfs_mono(processos, num);
-        //fcfs_multiprocessador(processos, num, quantum);
+        fcfs_multi(processos, num, quantum);
         break;
 
     case RR:
     {
-        rr_mono(processos, num, quantum);
-        //rr_multiprocessador(processos, num, quantum);
+        rr_multiprocessador(processos, num, quantum);
         break;
     }
 
     case PRIORITY:
     {
-       //priority_mono(processos, num, quantum);
-       priority_multi(processos, num, quantum);
+        priority_multi(processos, num, quantum);
         break;
     }
 
