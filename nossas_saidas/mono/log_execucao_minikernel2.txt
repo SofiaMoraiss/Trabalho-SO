@@ -1,4 +1,3 @@
-Modo de execução: mono
 [RR] Executando processo PID 1 com quantum 500ms
 [RR] Processo PID 1 finalizado
 [RR] Executando processo PID 3 com quantum 500ms
@@ -8,4 +7,4 @@ Modo de execução: mono
 [RR] Executando processo PID 2 com quantum 500ms
 [RR] Executando processo PID 2 com quantum 500ms
 [RR] Processo PID 2 finalizado
-Escalonador terminou execução de todos processos.
+Escalonador terminou execução de todos processos

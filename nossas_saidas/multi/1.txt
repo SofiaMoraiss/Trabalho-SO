@@ -1,2 +1,0 @@
-Modo de execução: multi
-Escalonador terminou execução de todos processos.

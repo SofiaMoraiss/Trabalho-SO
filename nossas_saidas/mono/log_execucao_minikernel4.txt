@@ -1,4 +1,3 @@
-Modo de execução: mono
 [RR] Executando processo PID 2 com quantum 500ms
 [RR] Processo PID 2 finalizado
 [RR] Executando processo PID 1 com quantum 500ms

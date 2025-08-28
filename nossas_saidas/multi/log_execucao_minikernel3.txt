@@ -1,4 +1,3 @@
-Modo de execução: multi
 [PRIORITY] Executando processo PID 1 // processador 0
 [PRIORITY] Executando processo PID 1 // processador 1
 [PRIORITY] Processo PID 1 finalizado

@@ -43,7 +43,7 @@ static void* threadWork(void* arg) {
 }
 
 
-void CFS_mono(PCB* processos[], int num, int quantum) {
+// void CFS_mono(PCB* processos[], int num, int quantum) {
     // int tempo_passado = 0;
     // int processos_finalizados = 0;
     
@@ -96,14 +96,15 @@ void CFS_mono(PCB* processos[], int num, int quantum) {
     //     }
     // }
     // rbtree_free(prontos);
-}
+// }
 
 void fcfs_mono(PCB* processos[], int num) {
+    int tempo_passado=0;
     for (int y = 0; y < num; y++)
     {
         PCB *p = processos[y];
         printf("[FCFS] Executando processo PID %d\n", get_pid(p));
-        running(p, get_remaining_time(p), FCFS);
+        tempo_passado+=running(p, get_remaining_time(p), FCFS);
     }
 }
 

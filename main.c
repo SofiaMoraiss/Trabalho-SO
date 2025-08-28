@@ -68,8 +68,6 @@ int main(int argc, char *argv[])
 
     Escalonamento tipo_escalonamento = (Escalonamento)esc;
 
-    printf("Modo de execução: %s\n", modo_de_execucao);
-
     if (esc < 1 || esc > 4)
     {
         fprintf(stderr, "Método Inválido.\n");

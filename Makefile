@@ -29,9 +29,9 @@ run: $(TARGET)
 	@for entrada in $(wildcard entradas/*.txt); do \
 		nome_base=$$(basename $$entrada .txt); \
 		echo "Processando $$entrada no modo MONO..."; \
-		./$(TARGET) "$$entrada" "mono" > "nossas_saidas/mono/$$nome_base.txt"; \
+		./$(TARGET) "$$entrada" "mono" > "nossas_saidas/mono/log_execucao_minikernel$$nome_base.txt"; \
 		echo "Processando $$entrada no modo MULTI..."; \
-		./$(TARGET) "$$entrada" "multi" > "nossas_saidas/multi/$$nome_base.txt"; \
+		./$(TARGET) "$$entrada" "multi" > "nossas_saidas/multi/log_execucao_minikernel$$nome_base.txt"; \
 	done
 	@echo "Todas as execuções foram concluídas."
 	$(MAKE) clean
@@ -43,9 +43,9 @@ run-valgrind: $(TARGET)
 	@for entrada in $(wildcard entradas/*.txt); do \
 		nome_base=$$(basename $$entrada .txt); \
 		echo "Valgrind -> $$entrada (MONO)"; \
-		valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET) "$$entrada" "mono" > "nossas_saidas/mono/valgrind_saida_$$nome_base.txt" 2> "nossas_saidas/mono/valgrind_log_$$nome_base.txt"; \
+		valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET) "$$entrada" "mono" > "nossas_saidas/mono/valgrind_log_execucao_minikernel$$nome_base.txt" 2> "nossas_saidas/mono/valgrind_log_$$nome_base.txt"; \
 		echo "Valgrind -> $$entrada (MULTI)"; \
-		valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET) "$$entrada" "multi" > "nossas_saidas/multi/valgrind_saida_$$nome_base.txt" 2> "nossas_saidas/multi/valgrind_log_$$nome_base.txt"; \
+		valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET) "$$entrada" "multi" > "nossas_saidas/multi/valgrind_log_execucao_minikernel$$nome_base.txt" 2> "nossas_saidas/multi/valgrind_log_$$nome_base.txt"; \
 	done
 	@echo "Execução com Valgrind concluída."
 	$(MAKE) clean

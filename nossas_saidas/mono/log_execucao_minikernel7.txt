@@ -1,4 +1,3 @@
-Modo de execução: mono
 [PRIORITY] Executando processo PID 2 com prioridade 2
 [PRIORITY] Processo PID 2 finalizado
 [PRIORITY] Executando processo PID 5 com prioridade 1
