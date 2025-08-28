@@ -123,6 +123,7 @@ void rr_mono(PCB* processos[], int num, int quantum) {
                     {
                         tempo_passado += quantum;
                         nulos++;
+                        destroyPCB(p);
                         processos[y] = NULL; 
                     }
                     else
