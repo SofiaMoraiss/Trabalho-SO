@@ -1,0 +1,3 @@
+Modo de execução: mono
+CFS ainda não implementado no modo mono.
+Escalonador terminou execução de todos processos.

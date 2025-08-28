@@ -1,0 +1,2 @@
+Modo de execução: mono
+Escalonador terminou execução de todos processos

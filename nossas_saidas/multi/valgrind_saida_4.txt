@@ -1,5 +1,6 @@
-Iniciando Round Robin com 2 processadores.
+Modo de execução: multi
 [RR] Executando processo PID 2 com quantum 500ms // processador 0
+[RR] Executando processo PID 2 com quantum 500ms // processador 1
 [RR] Processo PID 2 finalizado
 [RR] Executando processo PID 1 com quantum 500ms // processador 0
 [RR] Executando processo PID 3 com quantum 500ms // processador 1
@@ -14,4 +15,6 @@ Iniciando Round Robin com 2 processadores.
 [RR] Executando processo PID 5 com quantum 500ms // processador 1
 [RR] Processo PID 5 finalizado
 [RR] Executando processo PID 6 com quantum 500ms // processador 0
+[RR] Executando processo PID 6 com quantum 500ms // processador 1
 [RR] Processo PID 6 finalizado
+Escalonador terminou execução de todos processos

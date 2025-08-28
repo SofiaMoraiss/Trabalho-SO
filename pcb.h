@@ -23,6 +23,7 @@ typedef struct {
     int num_threads;         // Número de threads do processo
     int start_time;          // Tempo de chegada
     int thread_time;        // Tempo de CPU por thread
+    int vrun_time;        // Tempo de CPU já utilizado
 
     ProcessState state;      // Estado atual do processo
     pthread_mutex_t mutex;   // Mutex para sincronização
@@ -31,10 +32,10 @@ typedef struct {
 } PCB;
 
 // Funções utilitárias
-PCB* running(PCB* pcb, int tempo, int tipo);
+int running(PCB* pcb, int tempo, int tipo);
 PCB* thread_running(PCB* pcb, int tempo);
 void* thread_func(void* arg);
-void run_threads(PCB* pcb);
+int run_threads(PCB* pcb);
 //void running_multiprocessador(PCB* cpu0, PCB* cpu1, int quantum, int tipo);
 void fcfs_multi(PCB* processos[], int num); 
 void fcfs_mono(PCB* processos[], int num); 
@@ -42,10 +43,16 @@ void rr_mono(PCB* processos[], int num, int quantum);
 void priority_mono(PCB* processos[], int num, int quantum); 
 void rr_multiprocessador(PCB* processos[], int num, int quantum); 
 void priority_multi(PCB* processos[], int num, int quantum); 
+void CFS_mono(PCB* processos[], int num, int quantum); 
+//void CFS_multi(PCB* processos[], int num, int quantum);
 PCB* initPCB(int pid, int dur, int prioridade, int qtd_threads, int t_chegada);
-void destroyPCB(PCB* pcb);
+void destroyPCB(void* pcb);
 
 int get_remaining_time(PCB* pcb);
+int get_vruntime(PCB* pcb);
+void set_vruntime(PCB* pcb, int vt);
+int get_thread_time(PCB* pcb);
+void set_thread_time(PCB* pcb, int t);
 void set_remaining_time(PCB* pcb, int t);
 int get_priority(PCB* pcb);
 void set_priority(PCB* pcb, int p);

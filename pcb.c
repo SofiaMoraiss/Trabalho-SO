@@ -2,15 +2,17 @@
 #include <stdlib.h>
 #include "pcb.h"
 #include "fila.h"
-#include <unistd.h> // para usleep()
+#include "rbTree.h"
+#include <unistd.h> 
 
-#define NUM_PROCESSADORES 2 // já definido no seu código
+#define NUM_PROCESSADORES 2
 
 typedef enum
 {
     FCFS = 1,
     RR = 2,
-    PRIORITY = 3
+    PRIORITY = 3,
+    CFS = 4
 } Escalonamento;
 
 int comparePriority(void *a, void *b)
@@ -20,10 +22,80 @@ int comparePriority(void *a, void *b)
     return get_priority(p1) - get_priority(p2);
 }
 
+int compareVruntime(int a, int b)
+{
+    if (a < b) return -1;
+    if (a > b )return 1;
+    return 0;
+}
+
+int comparePIDs(void *a, void *b) {
+    PCB *p1 = (PCB *)a;
+    PCB *p2 = (PCB *)b;
+    return get_pid(p1) - get_pid(p2);
+}
+
+
 static void* threadWork(void* arg) {
-    (void)arg; // Declara que o parâmetro 'arg' é intencionalmente não utilizado.
+    (void)arg; 
     sleep(0.5); 
     return NULL;
+}
+
+
+void CFS_mono(PCB* processos[], int num, int quantum) {
+    // int tempo_passado = 0;
+    // int processos_finalizados = 0;
+    
+    // // Altere a função de comparação para usar o PID
+    // RBTree* prontos = rbtree_create(comparePIDs, destroyPCB);
+
+    // printf("Processos que iniciam no tempo 0:\n");
+    // for (int i = 0; i < num; i++) {
+    //     if (get_start_time(processos[i]) == 0) {
+    //         printf("Processo PID %d adicionado na fila de prontos\n", get_pid(processos[i]));
+    //         rbtree_insert(prontos, get_pid(processos[i]), processos[i]);
+    //         processos[i] = NULL;
+    //     }
+    // }
+
+    // while (processos_finalizados < num) {
+    //     // Adiciona processos que chegam no tempo atual
+    //     for (int i = 0; i < num; i++) {
+    //         if (processos[i] != NULL && get_start_time(processos[i]) == tempo_passado) {
+    //             printf("Processo PID %d adicionado na fila de prontos\n", get_pid(processos[i]));
+    //             rbtree_insert(prontos, get_pid(processos[i]), processos[i]);
+    //             processos[i] = NULL;
+    //         }
+    //     }
+        
+    //     // Use a nova função para encontrar o processo com a menor vruntime
+    //     PCB* p = (PCB*)rbtree_min_vruntime_value(prontos);
+
+    //     if (p != NULL) {
+    //         int qtd_prontos = rbtree_size(prontos);
+    //         int tempo_exec = quantum / (qtd_prontos > 0 ? qtd_prontos : 1);
+    //         if (tempo_exec < 50) {
+    //             tempo_exec = 50;
+    //         }
+    //         printf("[CFS] Executando processo PID %d com quantum %dms\n", get_pid(p), tempo_exec);
+    //         running(p, tempo_exec, CFS);
+
+    //         tempo_passado += tempo_exec;
+
+    //         if (p->state == TERMINATED) {
+    //             processos_finalizados++;
+    //             rbtree_delete(prontos, get_pid(p));
+    //         } else {
+    //             set_vruntime(p, get_vruntime(p) + tempo_exec);
+    //             rbtree_delete(prontos, get_pid(p));
+    //             rbtree_insert(prontos, get_pid(p), p);
+    //         }
+    //     } else {
+    //         tempo_passado++;
+    //     }
+    // }
+    // rbtree_free(prontos);
 }
 
 void fcfs_mono(PCB* processos[], int num) {
@@ -34,6 +106,7 @@ void fcfs_mono(PCB* processos[], int num) {
         running(p, get_remaining_time(p), FCFS);
     }
 }
+
 
 void rr_mono(PCB* processos[], int num, int quantum) {
     int tempo_passado = 0, y = 0, nulos = 0;
@@ -50,7 +123,7 @@ void rr_mono(PCB* processos[], int num, int quantum) {
                     {
                         tempo_passado += quantum;
                         nulos++;
-                        processos[y] = NULL; // arrumei aqui: antes você fazia `p = NULL`, mas isso não apagava do vetor
+                        processos[y] = NULL; 
                     }
                     else
                     {
@@ -75,6 +148,7 @@ void rr_mono(PCB* processos[], int num, int quantum) {
                 y = 0;
         }
 }
+
 
 void priority_mono(PCB* processos[], int num, int quantum) {
      Queue *prontos = createQueue();
@@ -133,12 +207,10 @@ void priority_mono(PCB* processos[], int num, int quantum) {
 }
 
 
-PCB* running(PCB* pcb, int tempo, int tipo) {
-    if (!pcb) return NULL;
-    
-    //printf("Escalonador: processo PID %d executando por %d ms\n", pcb->pid, tempo);
-    
-    run_threads(pcb);
+int running(PCB* pcb, int tempo, int tipo) {
+    if (!pcb) return 0;
+        
+    int tempo_passado_total= run_threads(pcb);
 
     pcb->remaining_time -= tempo;
     
@@ -156,19 +228,23 @@ PCB* running(PCB* pcb, int tempo, int tipo) {
         }
     }
     
-    return pcb;
+    return tempo_passado_total;
 }
 
+int run_threads(PCB* pcb) {
+    int i;
+ 
+    int tempo_por_thread = ((get_thread_time(pcb)+499)/500) * 500; // arredonda para o próximo múltiplo de 500ms
 
-// Cria e espera por todas as threads de um processo.
-void run_threads(PCB* pcb) {
-    for (int i = 0; i < pcb->num_threads; i++) {
+    for (i = 0; i < pcb->num_threads; i++) {
         pthread_create(&pcb->thread_ids[i], NULL, threadWork, NULL);
     }
 
-    for (int i = 0; i < pcb->num_threads; i++) {
+    for (i = 0; i < pcb->num_threads; i++) {
         pthread_join(pcb->thread_ids[i], NULL);
     }
+
+    return tempo_por_thread*i;
 }
 
 
@@ -191,31 +267,13 @@ void fcfs_multi(PCB* processos[], int num) {
             if (tempo_passado >= get_start_time(p))
             {
                 if (isEmpty(prontos)){ 
-                    // if (get_num_threads(p) < 2){
-                    //     printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(p), 0);
-                    //     running(p, get_remaining_time(p), FCFS);
-                    //     tempo_passado+=get_remaining_time(p);
-                    //     // printf("tempo passado %d\n", tempo_passado);
-                    //     processos_finalizados++;
-                    //     y++;
-                    //     for (int j = 0; j < NUM_PROCESSADORES; j++) {
-                    //         if (processadores[j] != NULL && get_pid(processadores[j]) == get_pid(p)) {
-                    //             processadores[j] = NULL;
-                    //         }
-                    //     }
-                    // }
-                    // else if (get_num_threads(p) >= 2){
-                        // printf("tem 2 ou mais threads\n");
-                    
                     int exec_time = get_remaining_time(p)/NUM_PROCESSADORES;
                     processadores[0] = p;
                     processadores[1]=processadores[0];
                     printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(p), 0);
                     printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(p), 1);
-                    running(p, exec_time, FCFS);
-                    running(p, exec_time, FCFS);
-                    tempo_passado+=exec_time;
-                    // printf("tempo passado %d\n", tempo_passado);
+                    tempo_passado+=running(p, exec_time, FCFS);
+                    tempo_passado+=running(p, exec_time, FCFS);
                     processos_finalizados++;
                     y++;
                     for (int j = 0; j < NUM_PROCESSADORES; j++) {
@@ -223,27 +281,22 @@ void fcfs_multi(PCB* processos[], int num) {
                             processadores[j] = NULL;
                         }
                     }
-                    // }
 
                 }
                 else{
                         processadores[0]=p;
                         PCB *p2 = (PCB *)dequeue(prontos);
                         processadores[1]=p2;
-                        //ver qual tem o menor tempo
                         if (get_remaining_time(p) < get_remaining_time(p2)){
                             menor_tempo = get_remaining_time(p);
                         }
                         else {
                             menor_tempo = get_remaining_time(p2);
                         }
-                        // printf("menor tempo %d\n", menor_tempo);
                         printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(processadores[0]), 0);
                         printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(processadores[1]), 1);
-                        running(processadores[0], menor_tempo, FCFS);
-                        running(processadores[1], menor_tempo, FCFS);
-                        tempo_passado+=menor_tempo;
-                        // printf("tempo passado %d\n", tempo_passado);
+                        tempo_passado+=running(processadores[0], menor_tempo, FCFS);
+                        tempo_passado+=running(processadores[1], menor_tempo, FCFS);
                         if (processadores[0]->state == TERMINATED){
                             processos_finalizados++;
                             y++;
@@ -277,9 +330,6 @@ void fcfs_multi(PCB* processos[], int num) {
     for (int j=y; j < num; j++){
         if (tempo_passado >= get_start_time(processos[j]) && processos[j] != NULL){
             if (processos[j] != NULL){
-                // printf("adiciona processo %d na fila de prontos\n", get_pid(processos[j]));
-                // printf("Tempo passado: %d // Tempo de chegada: %d\n", tempo_passado, get_start_time(processos[y]));
-                
                 enqueue(prontos, processos[j]);
             }
         }
@@ -300,51 +350,51 @@ void rr_multiprocessador(PCB* processos[], int num, int quantum) {
     int idx_chegada = 0;
     int tempo_passado = 0;
     
-    printf("Iniciando Round Robin com %d processadores.\n", NUM_PROCESSADORES);
-
     while (processos_finalizados < num) {
-        // Adiciona processos que chegaram na fila de prontos
         while (idx_chegada < num && get_start_time(processos[idx_chegada]) <= tempo_passado) {
             enqueue(prontos, processos[idx_chegada]);
             idx_chegada++;
         }
-
-        // Aloca processos da fila de prontos para CPUs livres
+        
         for (int i = 0; i < NUM_PROCESSADORES; i++) {
             if (processadores[i] == NULL && !isEmpty(prontos)) {
                 processadores[i] = (PCB *)dequeue(prontos);
-                printf("[RR] Executando processo PID %d com quantum %dms // processador %d\n", 
-                       get_pid(processadores[i]), quantum, i);
+                if (i == 0 && isEmpty(prontos)) {
+                    processadores[i+1] = processadores[i]; // ocupa a próxima CPU também
+                    
+                    printf("[RR] Executando processo PID %d com quantum %dms // processador %d\n", 
+                           get_pid(processadores[i]), quantum, i);
+                    printf("[RR] Executando processo PID %d com quantum %dms // processador %d\n", 
+                           get_pid(processadores[i+1]), quantum, i+1);
+                    break;
+                } else{
+                    printf("[RR] Executando processo PID %d com quantum %dms // processador %d\n", 
+                           get_pid(processadores[i]), quantum, i);
+
+                }
             }
         }
         
-        // Executa um quantum em cada processador
         for (int i = 0; i < NUM_PROCESSADORES; i++) {
             if (processadores[i] != NULL) {
-                // Salva o processo atual antes de chamar running
                 PCB* processo_atual = processadores[i];
-                running(processo_atual, quantum, RR);
+                tempo_passado+=running(processo_atual, quantum, RR);
 
                 if (processo_atual->state == TERMINATED) {
-                    // Impressão da mensagem de finalização
                     processos_finalizados++;
                     
-                    // Libera todas as CPUs ocupadas pelo mesmo processo
                     for (int j = 0; j < NUM_PROCESSADORES; j++) {
                         if (processadores[j] != NULL && get_pid(processadores[j]) == get_pid(processo_atual)) {
                             processadores[j] = NULL;
                         }
                     }
                 } else {
-                    // Preempção: se não terminou, retorna para a fila de prontos
                     enqueue(prontos, processo_atual);
-                    processadores[i] = NULL; // Libera o processador
+                    processadores[i] = NULL; 
                 }
             }
         }
         
-        // Avança o tempo
-        tempo_passado += quantum;
     }
     
     destroyQueue(prontos);
@@ -362,13 +412,11 @@ void priority_multi(PCB* processos[], int num, int quantum) {
     int idx_processos = 0;
 
     while (processos_finalizados < num) {
-        // 1. Adiciona processos que chegaram até o tempo atual
         while (idx_processos < num && get_start_time(processos[idx_processos]) <= tempo_passado) {
             enqueue(prontos, processos[idx_processos]);
             idx_processos++;
         }
 
-        // 2. Preempção
         if (!isEmpty(prontos)) {
             sortQueue(prontos, comparePriority);
             PCB *proximo_na_fila = (PCB *)prontos->front->data;
@@ -391,7 +439,6 @@ void priority_multi(PCB* processos[], int num, int quantum) {
             }
         }
 
-        // 3. Aloca processos em processadores livres considerando threads
         sortQueue(prontos, comparePriority);
 
         for (int i = 0; i < NUM_PROCESSADORES; i++) {
@@ -399,7 +446,6 @@ void priority_multi(PCB* processos[], int num, int quantum) {
                 PCB *atual = (PCB *)dequeue(prontos);
                 int threads = get_num_threads(atual);
 
-                // O processo pode ocupar até "threads" CPUs, mas não mais do que CPUs livres
                 int cpus_livres = 0;
                 for (int j = 0; j < NUM_PROCESSADORES; j++) {
                     if (processadores[j] == NULL) cpus_livres++;
@@ -409,7 +455,7 @@ void priority_multi(PCB* processos[], int num, int quantum) {
 
                 for (int j = 0; j < NUM_PROCESSADORES && cpus_para_ocupar > 0; j++) {
                     if (processadores[j] == NULL) {
-                        processadores[j] = atual; // mesma PCB em várias CPUs
+                        processadores[j] = atual; 
                         printf("[PRIORITY] Executando processo PID %d // processador %d\n", get_pid(atual), j);
                         cpus_para_ocupar--;
                     }
@@ -417,13 +463,11 @@ void priority_multi(PCB* processos[], int num, int quantum) {
             }
         }
 
-        // 4. Executa um quantum em cada processador
         for (int i = 0; i < NUM_PROCESSADORES; i++) {
             if (processadores[i] != NULL) {
                 running(processadores[i], quantum, PRIORITY);
 
                 if (processadores[i]->state == TERMINATED) {
-                    // liberar todos os processadores ocupados pelo mesmo processo
                     for (int j = 0; j < NUM_PROCESSADORES; j++) {
                         if (processadores[j] == processadores[i]) {
                             processadores[j] = NULL;
@@ -455,6 +499,7 @@ PCB* initPCB(int pid, int dur, int prioridade, int qtd_threads, int t_chegada) {
     p->num_threads = qtd_threads;
     p->start_time = t_chegada;
     p->thread_time = dur / qtd_threads; 
+    p->vrun_time = 0;
 
     p->state = NEW;
     pthread_mutex_init(&p->mutex, NULL);
@@ -470,9 +515,12 @@ PCB* initPCB(int pid, int dur, int prioridade, int qtd_threads, int t_chegada) {
     return p;
 }
 
-void destroyPCB(PCB* pcb) {
+void destroyPCB(void* p) {
+    PCB* pcb = (PCB*)p;
     if (!pcb) return;
-    free(pcb->thread_ids);
+    if (pcb->thread_ids) {
+        free(pcb->thread_ids);
+    }
     pthread_mutex_destroy(&pcb->mutex);
     pthread_cond_destroy(&pcb->cv);
     free(pcb);
@@ -502,75 +550,26 @@ int get_pid(PCB* pcb) {
     return pcb->pid;
 }
 
+int get_thread_time(PCB* pcb) {
+    return pcb->thread_time;
+}
+
+void set_thread_time(PCB* pcb, int t) {
+    pcb->thread_time = t;
+}
+
 int get_num_threads(PCB* pcb) {
     return pcb->num_threads;
+}
+
+int get_vruntime(PCB* pcb) {
+    return pcb->vrun_time;
+}   
+
+void set_vruntime(PCB* pcb, int vt) {
+    pcb->vrun_time = vt;
 }
 
 int get_process_len(PCB* pcb) {
     return pcb->process_len;
 }
-
-// PCB* thread_running(PCB* pcb, int tempo) {
-//     pthread_mutex_lock(&pcb->mutex);
-
-//     if (pcb->state == TERMINATED) {
-//         pthread_mutex_unlock(&pcb->mutex);
-//         return pcb;
-//     }
-
-//     pcb->state = RUNNING;
-//     pthread_mutex_unlock(&pcb->mutex);
-
-//     // Executa por 500 ms (independente do tempo lógico)
-//     usleep(500000);
-
-//     pthread_mutex_lock(&pcb->mutex);
-
-//     // Desconta apenas o "tempo lógico" da thread
-//     pcb->remaining_time -= tempo;
-
-//     if (pcb->remaining_time <= 0) {
-//         pcb->remaining_time = 0;
-//         pcb->state = TERMINATED;
-//         pthread_cond_broadcast(&pcb->cv);
-//     } else {
-//         pcb->state = READY;
-//     }
-
-//     pthread_mutex_unlock(&pcb->mutex);
-//     return pcb;
-// }
-
-// PCB* running(PCB* pcb, int tempo) {
-//     int tempo_restante = tempo;
-
-//     printf("Processo PID %d iniciando execução por %d ms\n", pcb->pid, tempo);
-
-//     while (tempo_restante > 0) {
-//         pthread_mutex_lock(&pcb->mutex);
-//         if (pcb->state == TERMINATED) {
-//             pthread_mutex_unlock(&pcb->mutex);
-//             return NULL; // encerra imediatamente se já terminou
-//         }
-//         pthread_mutex_unlock(&pcb->mutex);
-
-//         // Roda uma thread, usando o tempo restante do quantum
-//         thread_running(pcb, tempo_restante);
-
-//         // Verifica logo depois da execução se terminou
-//         pthread_mutex_lock(&pcb->mutex);
-//         if (pcb->state == TERMINATED) {
-//             pthread_mutex_unlock(&pcb->mutex);
-//             return NULL; // encerra imediatamente se terminou durante a execução
-//         }
-//         pthread_mutex_unlock(&pcb->mutex);
-
-//         tempo_restante -= 500; // cada execução simula 500ms de CPU
-//         printf("Processo PID %d: tempo restante %d ms\n", pcb->pid, pcb->remaining_time);
-
-//         // Se terminou de usar seu tempo, devolve ao escalonador
-//         if (pcb->state == READY) break;
-//     }
-
-//     return pcb;
-// }

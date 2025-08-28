@@ -1,3 +1,4 @@
+Modo de execução: multi
 [PRIORITY] Executando processo PID 2 // processador 0
 [PRIORITY] Executando processo PID 1 // processador 1
 [PRIORITY] Processo PID 2 finalizado
@@ -9,3 +10,4 @@
 [PRIORITY] Executando processo PID 4 // processador 0
 [PRIORITY] Processo PID 4 finalizado
 [PRIORITY] Processo PID 3 finalizado
+Escalonador terminou execução de todos processos.

@@ -11,7 +11,8 @@ typedef enum
 {
     FCFS = 1,
     RR = 2,
-    PRIORITY = 3
+    PRIORITY = 3,
+    CFS = 4
 } Escalonamento;
 
 int compare(const void *a, const void *b)
@@ -67,7 +68,9 @@ int main(int argc, char *argv[])
 
     Escalonamento tipo_escalonamento = (Escalonamento)esc;
 
-    if (esc < 1 || esc > 3)
+    printf("Modo de execução: %s\n", modo_de_execucao);
+
+    if (esc < 1 || esc > 4)
     {
         fprintf(stderr, "Método Inválido.\n");
         fclose(file);
@@ -82,10 +85,13 @@ int main(int argc, char *argv[])
             fcfs_mono(processos, num);
             break;
         case RR:
-            fcfs_mono(processos, num);
+            rr_mono(processos, num, quantum);
             break;
         case PRIORITY:
             priority_mono(processos, num, quantum);
+            break;
+        case CFS:
+            //CFS_mono(processos, num, quantum);
             break;
         default:
             printf("Invalid scheduling type selected.\n");
@@ -105,6 +111,9 @@ int main(int argc, char *argv[])
         case PRIORITY:
             priority_multi(processos, num, quantum);
             break;
+        case CFS:
+            //CFS_multi(processos, num, quantum);
+            break;
         default:
             printf("Invalid scheduling type selected.\n");
             break;
@@ -115,6 +124,8 @@ int main(int argc, char *argv[])
         fprintf(stderr, "Modo de execução inválido: %s\n", modo_de_execucao);
         return 1;
     }
+
+    printf("Escalonador terminou execução de todos processos\n");
 
     for (int i = 0; i < num; i++)
     {

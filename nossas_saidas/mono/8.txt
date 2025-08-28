@@ -1,0 +1,12 @@
+Modo de execução: mono
+[PRIORITY] Executando processo PID 2 com prioridade 2
+[PRIORITY] Processo PID 2 finalizado
+[PRIORITY] Executando processo PID 5 com prioridade 1
+[PRIORITY] Processo PID 5 finalizado
+[PRIORITY] Executando processo PID 1 com prioridade 3
+[PRIORITY] Processo PID 1 finalizado
+[PRIORITY] Executando processo PID 3 com prioridade 4
+[PRIORITY] Processo PID 3 finalizado
+[PRIORITY] Executando processo PID 4 com prioridade 5
+[PRIORITY] Processo PID 4 finalizado
+Escalonador terminou execução de todos processos.

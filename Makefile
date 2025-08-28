@@ -24,26 +24,28 @@ $(TARGET): $(OBJS)
 
 # Regra principal para executar o programa para todas as entradas
 run: $(TARGET)
-	@echo "Executando o programa para todas as 7 entradas..."
+	@echo "Executando o programa para todas as entradas..."
 	@mkdir -p nossas_saidas/mono nossas_saidas/multi
-	@for i in `seq 1 7`; do \
-		echo "Processando entradas/$$i.txt no modo MONO..."; \
-		./$(TARGET) "entradas/$$i.txt" "mono" > "nossas_saidas/mono/saida$$i.txt"; \
-		echo "Processando entradas/$$i.txt no modo MULTI..."; \
-		./$(TARGET) "entradas/$$i.txt" "multi" > "nossas_saidas/multi/saida$$i.txt"; \
+	@for entrada in $(wildcard entradas/*.txt); do \
+		nome_base=$$(basename $$entrada .txt); \
+		echo "Processando $$entrada no modo MONO..."; \
+		./$(TARGET) "$$entrada" "mono" > "nossas_saidas/mono/$$nome_base.txt"; \
+		echo "Processando $$entrada no modo MULTI..."; \
+		./$(TARGET) "$$entrada" "multi" > "nossas_saidas/multi/$$nome_base.txt"; \
 	done
 	@echo "Todas as execuções foram concluídas."
 	$(MAKE) clean
 
 # Versão com Valgrind
 run-valgrind: $(TARGET)
-	@echo "Executando o programa com Valgrind para todas as 7 entradas..."
+	@echo "Executando o programa com Valgrind para todas as entradas..."
 	@mkdir -p nossas_saidas/mono nossas_saidas/multi
-	@for i in `seq 1 7`; do \
-		echo "Valgrind -> entradas/$$i.txt (MONO)"; \
-		valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET) "entradas/$$i.txt" "mono" > "nossas_saidas/mono/valgrind_saida$$i.txt" 2> "nossas_saidas/mono/valgrind_log$$i.txt"; \
-		echo "Valgrind -> entradas/$$i.txt (MULTI)"; \
-		valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET) "entradas/$$i.txt" "multi" > "nossas_saidas/multi/valgrind_saida$$i.txt" 2> "nossas_saidas/multi/valgrind_log$$i.txt"; \
+	@for entrada in $(wildcard entradas/*.txt); do \
+		nome_base=$$(basename $$entrada .txt); \
+		echo "Valgrind -> $$entrada (MONO)"; \
+		valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET) "$$entrada" "mono" > "nossas_saidas/mono/valgrind_saida_$$nome_base.txt" 2> "nossas_saidas/mono/valgrind_log_$$nome_base.txt"; \
+		echo "Valgrind -> $$entrada (MULTI)"; \
+		valgrind --leak-check=full --show-leak-kinds=all ./$(TARGET) "$$entrada" "multi" > "nossas_saidas/multi/valgrind_saida_$$nome_base.txt" 2> "nossas_saidas/multi/valgrind_log_$$nome_base.txt"; \
 	done
 	@echo "Execução com Valgrind concluída."
 	$(MAKE) clean
