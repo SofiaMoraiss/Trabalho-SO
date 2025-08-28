@@ -172,69 +172,127 @@ void run_threads(PCB* pcb) {
 }
 
 
-void fcfs_multi(PCB* processos[], int num, int quantum) {
-    // Array para simular os processadores
+void fcfs_multi(PCB* processos[], int num) {
+    int tempo_passado = 0, y = 0, processos_finalizados = 0, menor_tempo=0;
     PCB *processadores[NUM_PROCESSADORES] = {NULL};
-    int processos_finalizados = 0;
-    int idx_processos = 0;
-    int tempo_passado = 0;
+    Queue *prontos = createQueue();
 
-    printf("Iniciando FCFS com %d processadores.\n", NUM_PROCESSADORES);
-
-    while (processos_finalizados < num) {
-        // 1. Tenta alocar processos nas CPUs livres
-        for (int i = 0; i < NUM_PROCESSADORES; i++) {
-            if (processadores[i] == NULL) {
-                // Encontra o próximo processo pronto na fila ordenada por tempo de chegada
-                PCB *p = NULL;
-                for (int j = 0; j < num; j++) {
-                    if (processos[j]->state != TERMINATED && get_start_time(processos[j]) <= tempo_passado) {
-                        p = processos[j];
-                        break; 
-                    }
-                }
-
-                if (p != NULL) {
-                    processadores[i] = p;
-                    // Lógica para alocar o mesmo processo a várias CPUs, se houver threads suficientes
-                    for (int j = i + 1; j < NUM_PROCESSADORES; j++) {
-                        if (p->num_threads > (j - i) && processadores[j] == NULL) {
-                            processadores[j] = p;
-                        } else {
-                            break;
-                        }
-                    }
-
-                    printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(p), i);
-                }
-            }
+    for (int i = 0; i < num; i++) {
+        if (get_start_time(processos[i]) == 0){
+            enqueue(prontos, processos[i]);
         }
-        
-        // 2. Executa os processos em cada processador
-        for (int i = 0; i < NUM_PROCESSADORES; i++) {
-            if (processadores[i] != NULL) {
-                running(processadores[i], quantum, FCFS);
-                
-                if (processadores[i]->state == TERMINATED) {
-                    // Libera todas as CPUs ocupadas pelo mesmo processo
-                    PCB *terminado = processadores[i];
+    }
+    while (1)
+    {
+        PCB *p = (PCB *)dequeue(prontos);
+        // printf("-------- INICIO WHILE Processo PID %d\n", get_pid(p)); 
+        if (p != NULL)
+        {
+            if (tempo_passado >= get_start_time(p))
+            {
+                if (isEmpty(prontos)){ 
+                    // if (get_num_threads(p) < 2){
+                    //     printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(p), 0);
+                    //     running(p, get_remaining_time(p), FCFS);
+                    //     tempo_passado+=get_remaining_time(p);
+                    //     // printf("tempo passado %d\n", tempo_passado);
+                    //     processos_finalizados++;
+                    //     y++;
+                    //     for (int j = 0; j < NUM_PROCESSADORES; j++) {
+                    //         if (processadores[j] != NULL && get_pid(processadores[j]) == get_pid(p)) {
+                    //             processadores[j] = NULL;
+                    //         }
+                    //     }
+                    // }
+                    // else if (get_num_threads(p) >= 2){
+                        // printf("tem 2 ou mais threads\n");
+                    
+                    int exec_time = get_remaining_time(p)/NUM_PROCESSADORES;
+                    processadores[0] = p;
+                    processadores[1]=processadores[0];
+                    printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(p), 0);
+                    printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(p), 1);
+                    running(p, exec_time, FCFS);
+                    running(p, exec_time, FCFS);
+                    tempo_passado+=exec_time;
+                    // printf("tempo passado %d\n", tempo_passado);
+                    processos_finalizados++;
+                    y++;
                     for (int j = 0; j < NUM_PROCESSADORES; j++) {
-                        if (processadores[j] == terminado) {
+                        if (processadores[j] != NULL && get_pid(processadores[j]) == get_pid(p)) {
                             processadores[j] = NULL;
                         }
                     }
-                    printf("[FCFS] Processo PID %d finalizado\n", get_pid(terminado));
-                    processos_finalizados++;
+                    // }
+
+                }
+                else{
+                        processadores[0]=p;
+                        PCB *p2 = (PCB *)dequeue(prontos);
+                        processadores[1]=p2;
+                        //ver qual tem o menor tempo
+                        if (get_remaining_time(p) < get_remaining_time(p2)){
+                            menor_tempo = get_remaining_time(p);
+                        }
+                        else {
+                            menor_tempo = get_remaining_time(p2);
+                        }
+                        // printf("menor tempo %d\n", menor_tempo);
+                        printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(processadores[0]), 0);
+                        printf("[FCFS] Executando processo PID %d // processador %d\n", get_pid(processadores[1]), 1);
+                        running(processadores[0], menor_tempo, FCFS);
+                        running(processadores[1], menor_tempo, FCFS);
+                        tempo_passado+=menor_tempo;
+                        // printf("tempo passado %d\n", tempo_passado);
+                        if (processadores[0]->state == TERMINATED){
+                            processos_finalizados++;
+                            y++;
+                            if (processadores[1]->state == TERMINATED){
+                                processos_finalizados++;
+                                y++;
+                            }
+                            else {
+                                enqueue(prontos, processadores[1]);
+                            }
+                        }
+                        else if (processadores[1]->state == TERMINATED){
+                            enqueue(prontos, processadores[0]);
+                            processos_finalizados++;
+                            y++;
+                        }
+
+                        for (int j = 0; j < NUM_PROCESSADORES; j++) {
+                            if (processadores[j] != NULL && get_pid(processadores[j]) == get_pid(p)) {
+                                processadores[j] = NULL;
+                            }
+                        }
+                        y++;
                 }
             }
+            else {
+                tempo_passado++;
+            }
         }
-
-        // Avança o tempo
-        tempo_passado += quantum;
+    
+    for (int j=y; j < num; j++){
+        if (tempo_passado >= get_start_time(processos[j]) && processos[j] != NULL){
+            if (processos[j] != NULL){
+                // printf("adiciona processo %d na fila de prontos\n", get_pid(processos[j]));
+                // printf("Tempo passado: %d // Tempo de chegada: %d\n", tempo_passado, get_start_time(processos[y]));
+                
+                enqueue(prontos, processos[j]);
+            }
+        }
+    }
+    if (processos_finalizados>= num){
+        break;
+    }
     }
     
-    printf("Escalonador terminou execução de todos processos\n");
+    destroyQueue(prontos);
 }
+
+
 void rr_multiprocessador(PCB* processos[], int num, int quantum) {
     Queue *prontos = createQueue();
     PCB *processadores[NUM_PROCESSADORES] = {NULL};

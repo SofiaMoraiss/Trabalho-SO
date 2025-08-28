@@ -14,4 +14,3 @@ Iniciando Round Robin com 2 processadores.
 [RR] Executando processo PID 5 com quantum 500ms // processador 1
 [RR] Processo PID 3 finalizado
 [RR] Processo PID 5 finalizado
-Escalonador terminou execução de todos processos

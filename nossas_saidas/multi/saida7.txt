@@ -9,4 +9,3 @@
 [PRIORITY] Executando processo PID 4 // processador 0
 [PRIORITY] Processo PID 4 finalizado
 [PRIORITY] Processo PID 3 finalizado
-Escalonador terminou execução de todos processos

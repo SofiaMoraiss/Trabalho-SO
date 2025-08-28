@@ -6,6 +6,7 @@
 #include "pcb.h"
 #include "fila.h"
 
+
 typedef enum
 {
     FCFS = 1,
@@ -25,12 +26,16 @@ int main(int argc, char *argv[])
     int quantum = 500;
     FILE *file;
     int num, esc;
+    char *modo_de_execucao;
 
-    if (argc < 2)
+    if (argc < 3)
     {
-        fprintf(stderr, "Uso: %s <caminho_para_o_arquivo_de_entrada>\n", argv[0]);
+        fprintf(stderr, "Uso: %s <caminho_para_o_arquivo_de_entrada> <modo_de_execucao>\n", argv[0]);
+        fprintf(stderr, "Modos: mono, multi\n");
         return 1;
     }
+
+    modo_de_execucao = argv[2];
 
     file = fopen(argv[1], "r");
     if (file == NULL)
@@ -69,27 +74,46 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    switch (tipo_escalonamento)
+    if (strcmp(modo_de_execucao, "mono") == 0)
     {
-    case FCFS:
-        fcfs_multi(processos, num, quantum);
-        break;
-
-    case RR:
-    {
-        rr_multiprocessador(processos, num, quantum);
-        break;
+        switch (tipo_escalonamento)
+        {
+        case FCFS:
+            fcfs_mono(processos, num);
+            break;
+        case RR:
+            fcfs_mono(processos, num);
+            break;
+        case PRIORITY:
+            priority_mono(processos, num, quantum);
+            break;
+        default:
+            printf("Invalid scheduling type selected.\n");
+            break;
+        }
     }
-
-    case PRIORITY:
+    else if (strcmp(modo_de_execucao, "multi") == 0)
     {
-        priority_multi(processos, num, quantum);
-        break;
+        switch (tipo_escalonamento)
+        {
+        case FCFS:
+            fcfs_multi(processos, num);
+            break;
+        case RR:
+            rr_multiprocessador(processos, num, quantum);
+            break;
+        case PRIORITY:
+            priority_multi(processos, num, quantum);
+            break;
+        default:
+            printf("Invalid scheduling type selected.\n");
+            break;
+        }
     }
-
-    default:
-        printf("Invalid scheduling type selected.\n");
-        break;
+    else
+    {
+        fprintf(stderr, "Modo de execução inválido: %s\n", modo_de_execucao);
+        return 1;
     }
 
     for (int i = 0; i < num; i++)
@@ -101,6 +125,5 @@ int main(int argc, char *argv[])
     }
 
     fclose(file);
-    printf("Escalonador terminou execução de todos processos\n");
     return 0;
 }
